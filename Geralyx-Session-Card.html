@@ -205,8 +205,8 @@ async function load() {
     let targetRow = null;
     for (const row of rows) {
       const cells = row.c || [];
-      if (!cells[0] || cells[0].v === null) continue;
-      const id = String(cells[0].v).replace('.0','').trim();
+      if (!cells[1] || cells[1].v === null) continue;
+      const id = String(cells[1].v).replace('.0','').trim();
       if (id === String(athleteId)) { targetRow = cells; break; }
     }
 
@@ -217,12 +217,12 @@ async function load() {
 
     const wk1 = [], wk2 = [], deltas = [];
     for (let i = 0; i < 10; i++) {
-      wk1.push(parseVal(targetRow[1 + i * 3]));
-      wk2.push(parseVal(targetRow[2 + i * 3]));
-      deltas.push(parsePct(targetRow[3 + i * 3]));
+      wk1.push(parseVal(targetRow[2 + i * 3]));
+      wk2.push(parseVal(targetRow[3 + i * 3]));
+      deltas.push(parsePct(targetRow[4 + i * 3]));
     }
 
-    const overall = parsePct(targetRow[31]);
+    const overall = parsePct(targetRow[32]);
     const week = wk2.some(v => v !== null) ? '2+' : '1';
     document.getElementById('week-num').textContent = 'Week ' + week;
 
