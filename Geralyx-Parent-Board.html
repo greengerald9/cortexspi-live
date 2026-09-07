@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Geralyx · Your Athlete</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #F2F0EC; min-height: 100vh; }
+
+  .header { background: #fff; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e8e5e0; }
+  .wordmark { font-family: 'Oswald', sans-serif; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #1a1a1a; }
+  .wordmark span { color: #E8B84B; }
+  .live-pill { display: flex; align-items: center; gap: 5px; background: #edfbf3; border: 1px solid #a8e6c4; border-radius: 20px; padding: 4px 10px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #2E7D5B; animation: pulse 2s infinite; }
+  .live-text { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #2E7D5B; text-transform: uppercase; letter-spacing: 0.1em; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .hero { padding: 24px 20px 20px; }
+  .hero-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 4px; }
+  .hero-id { font-family: 'Oswald', sans-serif; font-size: 52px; font-weight: 700; line-height: 1; }
+  .hero-id.F { color: #5FA8C9; }
+  .hero-id.D { color: #2E7D5B; }
+  .hero-id.P { color: #E8B84B; }
+  .hero-circuit { font-size: 12px; color: #888; margin-top: 4px; }
+
+  .overall-card { margin: 0 16px 14px; background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+  .overall-left { }
+  .ov-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; }
+  .ov-pct { font-family: 'Oswald', sans-serif; font-size: 52px; font-weight: 700; line-height: 1; }
+  .ov-pct.pos { color: #2E7D5B; }
+  .ov-pct.neg { color: #E8543A; }
+  .ov-pct.nil { color: #aaa; }
+  .ov-sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+  .best-block { text-align: right; }
+  .best-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #bbb; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .best-badge { background: #FFF8E8; border: 1px solid #E8B84B; border-radius: 10px; padding: 8px 12px; text-align: center; }
+  .best-name { font-size: 11px; font-weight: 600; color: #1a1a1a; }
+  .best-pct { font-family: 'Oswald', sans-serif; font-size: 20px; font-weight: 700; color: #E8B84B; }
+
+  .section-label { padding: 4px 16px 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #bbb; text-transform: uppercase; letter-spacing: 0.2em; }
+
+  .stations { padding: 0 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .stn-card { background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px; }
+  .stn-card.pos { border-left: 3px solid #2E7D5B; }
+  .stn-card.neg { border-left: 3px solid #E8543A; }
+  .stn-card.nil { border-left: 3px solid #E8B84B; }
+  .stn-card.empty { border-left: 3px solid #e5e5e5; opacity: 0.5; }
+
+  .stn-num-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #E8B84B; width: 22px; flex-shrink: 0; }
+  .stn-info { flex: 1; }
+  .stn-name { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  .stn-vs { font-size: 11px; color: #888; margin-top: 2px; }
+  .stn-right { text-align: right; flex-shrink: 0; }
+  .stn-score-val { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+  .stn-unit { font-size: 10px; color: #aaa; }
+  .stn-delta { font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .stn-delta.pos { color: #2E7D5B; }
+  .stn-delta.neg { color: #E8543A; }
+  .stn-delta.nil { color: #E8B84B; }
+
+  .baseline-card { margin: 0 16px 20px; background: #EDF7F1; border: 1px solid #a8e6c4; border-radius: 14px; padding: 20px; text-align: center; }
+  .baseline-title { font-family: 'Oswald', sans-serif; font-size: 20px; text-transform: uppercase; color: #0F1E18; margin-bottom: 6px; }
+  .baseline-sub { font-size: 13px; color: #555; line-height: 1.6; }
+
+  .footer { padding: 14px 20px; text-align: center; border-top: 1px solid #e8e5e0; background: #fff; }
+  .footer-text { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #ccc; text-transform: uppercase; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="wordmark">GERAL<span>Y</span>X</div>
+  <div class="live-pill"><div class="live-dot"></div><span class="live-text">Live</span></div>
+</div>
+
+<div id="content">
+  <div style="padding:40px;text-align:center;color:#aaa;font-family:JetBrains Mono,monospace;font-size:12px;">Loading your athlete...</div>
+</div>
+
+<div class="footer">
+  <div class="footer-text">Geralyx · Sports Performance Intelligence · Private</div>
+</div>
+
+<script>
+const SHEET_ID = '19Ea_YOGRlh97lElsDbj6hDGgS-FSSDpvXErlYGYdvk0';
+
+const STATIONS = {
+  F: [
+    {name:'Sit-to-Stand', unit:'reps / 30s'},
+    {name:'Wall Push-Up', unit:'max reps'},
+    {name:'Side Plank', unit:'seconds'},
+    {name:'Balance Walk', unit:'score /3'},
+    {name:'Farmer Carry', unit:'lengths'},
+    {name:'Med Ball Throw', unit:'metres'},
+    {name:'Step-Up', unit:'reps / 30s'},
+    {name:'Bike Sprint', unit:'cal / 30s'},
+    null, null
+  ],
+  D: [
+    {name:'20m Sprint', unit:'seconds'},
+    {name:'Resisted Broad Jump', unit:'metres'},
+    {name:'AirBike Sprint', unit:'calories'},
+    {name:'T-Test', unit:'seconds'},
+    {name:'Loaded CMJ', unit:'cm'},
+    {name:'Pull-Up', unit:'max reps'},
+    {name:'Rotational Med Ball', unit:'metres'},
+    {name:'Pallof Hold', unit:'seconds'},
+    {name:'Reactive Catch', unit:'score /10'},
+    {name:'Drop Jump', unit:'score /3'}
+  ],
+  P: [
+    {name:'Sprint 20m', unit:'seconds'},
+    {name:'Force Plate CMJ', unit:'cm'},
+    {name:'Rowing Erg', unit:'W/kg'},
+    {name:'Ski Erg', unit:'W/kg'},
+    {name:'Sled Sprint', unit:'seconds'},
+    {name:'T-Test Gates', unit:'seconds'},
+    {name:'RAST', unit:'fatigue %'},
+    {name:'Rotational Med Ball', unit:'metres'},
+    {name:'Pallof Load', unit:'kg'},
+    {name:'Drop Jump RSI', unit:'RSI'}
+  ]
+};
+
+function getTier(id) {
+  const f = String(id)[0];
+  return f === '2' ? 'D' : f === '3' ? 'P' : 'F';
+}
+function getTierName(t) { return t === 'F' ? 'Foundation Circuit' : t === 'D' ? 'Developmental Circuit' : 'Performance Circuit'; }
+function getParam() { return new URLSearchParams(window.location.search).get('athlete'); }
+
+function fmt(v) {
+  if (v === null || isNaN(v)) return '—';
+  return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+}
+
+function parseVal(cell) {
+  if (!cell || cell.v === null || cell.v === undefined) return null;
+  const s = String(cell.v);
+  if (s === '—' || s === '') return null;
+  const n = parseFloat(s.replace(/[^0-9.-]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function parsePct(cell) {
+  if (!cell) return null;
+  const raw = cell.f || (cell.v !== null ? String(cell.v) : '');
+  const clean = raw.replace(/[%+\s—]/g, '');
+  if (!clean) return null;
+  const n = parseFloat(clean);
+  return isNaN(n) ? null : n;
+}
+
+async function load() {
+  const athleteId = getParam();
+  if (!athleteId) {
+    document.getElementById('content').innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;font-size:13px;">No athlete ID in URL.<br>Add ?athlete=101 to the link.</div>';
+    return;
+  }
+
+  const tier = getTier(athleteId);
+  const tierName = getTierName(tier);
+  const stations = STATIONS[tier];
+
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Board&headers=1`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(text.indexOf('(') + 1, text.lastIndexOf(')')));
+    const rows = json.table.rows;
+
+    let targetRow = null;
+    for (const row of rows) {
+      const cells = row.c || [];
+      if (!cells[0] || cells[0].v === null) continue;
+      const id = String(cells[0].v).replace('.0','').trim();
+      if (id === String(athleteId)) { targetRow = cells; break; }
+    }
+
+    if (!targetRow) {
+      document.getElementById('content').innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;font-size:13px;">Athlete not found. Check your link.</div>';
+      return;
+    }
+
+    const wk1 = [], wk2 = [], deltas = [];
+    for (let i = 0; i < 10; i++) {
+      wk1.push(parseVal(targetRow[1 + i * 3]));
+      wk2.push(parseVal(targetRow[2 + i * 3]));
+      deltas.push(parsePct(targetRow[3 + i * 3]));
+    }
+
+    const overall = parsePct(targetRow[31]);
+    const hasComparison = overall !== null && wk2.some(v => v !== null);
+    const hasBaseline = wk1.some(v => v !== null);
+
+    let bestIdx = -1, bestVal = -Infinity;
+    deltas.forEach((d, i) => { if (d !== null && d > bestVal) { bestVal = d; bestIdx = i; } });
+
+    let html = `
+      <div class="hero">
+        <div class="hero-label">Athlete</div>
+        <div class="hero-id ${tier}">${athleteId}</div>
+        <div class="hero-circuit">${tierName} · Geralyx Performance Programme</div>
+      </div>`;
+
+    if (hasComparison) {
+      const ovCls = overall > 0 ? 'pos' : overall < 0 ? 'neg' : 'nil';
+      html += `
+        <div class="overall-card">
+          <div class="overall-left">
+            <div class="ov-label">vs last time</div>
+            <div class="ov-pct ${ovCls}">${fmt(overall)}</div>
+            <div class="ov-sub">overall across all stations</div>
+          </div>
+          ${bestIdx >= 0 ? `
+          <div class="best-block">
+            <div class="best-label">Best station</div>
+            <div class="best-badge">
+              <div class="best-name">${stations[bestIdx]?.name || ''}</div>
+              <div class="best-pct">${fmt(bestVal)}</div>
+            </div>
+          </div>` : ''}
+        </div>
+        <div class="section-label">Station breakdown</div>
+        <div class="stations">`;
+
+      for (let i = 0; i < 10; i++) {
+        const s = stations[i];
+        if (!s) continue;
+        const score = wk2[i] !== null ? wk2[i] : wk1[i];
+        const delta = deltas[i];
+        const cls = delta === null ? 'empty' : delta > 0 ? 'pos' : delta < 0 ? 'neg' : 'nil';
+        html += `
+          <div class="stn-card ${cls}">
+            <span class="stn-num-label">S${i+1}</span>
+            <div class="stn-info">
+              <div class="stn-name">${s.name}</div>
+              ${delta !== null ? `<div class="stn-vs">${delta > 0 ? '↑ Better than last time' : delta < 0 ? '↓ Keep working on this' : '→ Same as last time'}</div>` : ''}
+            </div>
+            <div class="stn-right">
+              <div class="stn-score-val">${score !== null ? score : '—'}</div>
+              <div class="stn-unit">${score !== null ? s.unit : ''}</div>
+              ${delta !== null ? `<div class="stn-delta ${cls}">${fmt(delta)}</div>` : ''}
+            </div>
+          </div>`;
+      }
+
+      html += `</div>`;
+
+    } else if (hasBaseline) {
+      html += `
+        <div class="baseline-card">
+          <div class="baseline-title">Week 1 Complete ✓</div>
+          <div class="baseline-sub">Baseline scores recorded. Come back after the next session to see how much has improved.</div>
+        </div>
+        <div class="section-label">Week 1 scores</div>
+        <div class="stations">`;
+
+      for (let i = 0; i < 10; i++) {
+        const s = stations[i];
+        if (!s) continue;
+        html += `
+          <div class="stn-card nil">
+            <span class="stn-num-label">S${i+1}</span>
+            <div class="stn-info"><div class="stn-name">${s.name}</div></div>
+            <div class="stn-right">
+              <div class="stn-score-val">${wk1[i] !== null ? wk1[i] : '—'}</div>
+              <div class="stn-unit">${wk1[i] !== null ? s.unit : ''}</div>
+            </div>
+          </div>`;
+      }
+
+      html += `</div>`;
+    } else {
+      html += `
+        <div class="baseline-card">
+          <div class="baseline-title">Session incoming</div>
+          <div class="baseline-sub">Scores will appear here after the first session is complete.</div>
+        </div>`;
+    }
+
+    document.getElementById('content').innerHTML = html;
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById('content').innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;font-size:13px;">Connection error — will retry in 30 seconds</div>';
+  }
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
