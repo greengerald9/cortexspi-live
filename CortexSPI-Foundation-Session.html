@@ -152,6 +152,25 @@
 </head>
 <body>
 
+<!-- LOCK SCREEN -->
+<div id="lockScreen" style="display:none;position:fixed;inset:0;background:#0F1E18;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
+  <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;text-transform:uppercase;color:#EFEDE5;letter-spacing:1px;margin-bottom:4px;">CORTE<span style="color:#E8B84B;">X</span> SPI</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#7C877D;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:40px;">Athlete Access</div>
+  <div style="width:100%;max-width:320px;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#7C877D;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:8px;">Access Code</div>
+    <input id="codeInput" type="password" placeholder="Enter your code"
+      style="width:100%;background:#1A2E22;border:1px solid #2E4A36;border-radius:8px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:15px;color:#EFEDE5;letter-spacing:0.15em;outline:none;margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter')checkCode()">
+    <button onclick="checkCode()"
+      style="width:100%;background:#E8B84B;border:none;border-radius:8px;padding:14px;font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0F1E18;cursor:pointer;">
+      Unlock
+    </button>
+    <div id="codeError" style="display:none;font-family:'JetBrains Mono',monospace;font-size:10px;color:#E8543A;text-align:center;margin-top:10px;letter-spacing:0.1em;">Invalid access code</div>
+  </div>
+</div>
+
+<div id="mainContent" style="display:none;">
+
 <div class="header">
   <div>
     <div class="wordmark">CORTE<span>X</span> SPI</div>
@@ -349,6 +368,33 @@ async function load(){
 
 load();
 setInterval(load,30000);
+</script>
+
+</div><!-- /mainContent -->
+
+<script>
+const ACCESS_CODES = { '108':'CX-108-F', '206':'CX-206-D', '308':'CX-308-P' };
+function getAthleteId(){ return new URLSearchParams(window.location.search).get('athlete')||''; }
+function checkCode(){
+  const id=getAthleteId();
+  const entered=document.getElementById('codeInput').value.trim().toUpperCase();
+  const correct=(ACCESS_CODES[id]||'').toUpperCase();
+  if(entered===correct){
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('mainContent').style.display='block';
+    try{localStorage.setItem('cx_auth_'+id,'1');}catch(e){}
+  } else {
+    document.getElementById('codeError').style.display='block';
+    document.getElementById('codeInput').value='';
+    document.getElementById('codeInput').focus();
+  }
+}
+(function(){
+  const id=getAthleteId(); let ok=false;
+  try{ok=localStorage.getItem('cx_auth_'+id)==='1';}catch(e){}
+  if(ok){document.getElementById('lockScreen').style.display='none';document.getElementById('mainContent').style.display='block';}
+  else{document.getElementById('lockScreen').style.display='flex';document.getElementById('mainContent').style.display='none';}
+})();
 </script>
 </body>
 </html>
