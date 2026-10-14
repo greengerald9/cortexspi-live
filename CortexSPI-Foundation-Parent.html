@@ -194,7 +194,7 @@ const TIER_DATA = {
       { name:'Farmer Carry', emoji:'💼', unit:'metres' },
       { name:'Med Ball Throw', emoji:'🏐', unit:'metres' },
       { name:'Step-Up', emoji:'🪜', unit:'reps / 1 min' },
-      { name:'Bike Sprint', emoji:'🚴', unit:'cal / 30s' },
+      { name:'Bike Sprint', emoji:'🚴', unit:'cal / 30s', higherIsBetter:true },
       null, null
     ],
     msgs: {
@@ -342,7 +342,8 @@ async function load() {
       const activeStations = td.stations.filter(s=>s!==null);
       activeStations.forEach((s,i)=>{
         const d = deltas[i];
-        const cls = d===null?'nil':d>0?'pos':'neg';
+        const good = s.higherIsBetter ? d>0 : d<0;
+        const cls = d===null?'nil':good?'pos':'neg';
         const barW = d===null?0:Math.abs(d)/maxAbs*100;
         html+=`
           <div class="chart-row">
@@ -365,8 +366,9 @@ async function load() {
         if(!s)continue;
         const score=wk2[i]!==null?wk2[i]:wk1[i];
         const delta=deltas[i];
-        const cls=delta===null?'empty':delta>0?'pos':delta<0?'neg':'nil';
-        const msgArr=delta===null?['—']:delta>0?td.msgs.pos:delta<0?td.msgs.neg:td.msgs.nil;
+        const good=delta===null?null:(s.higherIsBetter?delta>0:delta<0);
+        const cls=delta===null?'empty':good?'pos':delta===0?'nil':'neg';
+        const msgArr=delta===null?['—']:good?td.msgs.pos:delta===0?td.msgs.nil:td.msgs.neg;
         html+=`
           <div class="stn-card ${cls}">
             <span class="stn-emoji-sm">${s.emoji}</span>
