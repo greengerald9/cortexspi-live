@@ -238,7 +238,7 @@ const TIER_DATA = {
       { name:'Farmer Carry', emoji:'💼', unit:'m', metric:'DISTANCE' },
       { name:'Med Ball Throw', emoji:'🏐', unit:'m', metric:'DISTANCE' },
       { name:'Step-Up', emoji:'🪜', unit:'reps', metric:'1 MIN' },
-      { name:'Bike Sprint', emoji:'🚴', unit:'cal', metric:'30s ALL OUT' },
+      { name:'Bike Sprint', emoji:'🚴', unit:'cal', metric:'30s ALL OUT', higherIsBetter:true },
       null, null
     ]
   },
@@ -332,9 +332,10 @@ async function load(){
       const hasSc=score!==null;
       const cls=hasSc?(isBest?'best':'filled'):'';
       const dotCls=hasSc?(isBest?'best':'filled'):'';
-      const vsCls=delta===null?'nil':delta>0?'pos':'neg';
-      const prompt=hasSc&&delta!==null?(delta>0?rnd(PROMPTS.pos):rnd(PROMPTS.neg)):'';
-      const promptCls=delta!==null?(delta>0?'pos':'neg'):'';
+      const good=s.higherIsBetter?delta>0:delta<0;
+      const vsCls=delta===null?'nil':good?'pos':'neg';
+      const prompt=hasSc&&delta!==null?(good?rnd(PROMPTS.pos):rnd(PROMPTS.neg)):'';
+      const promptCls=delta!==null?(good?'pos':'neg'):'';
 
       grid+=`
         <div class="stn-box ${cls}">
