@@ -139,8 +139,7 @@ const TIER_DATA = {
       {name:'Step-Up',        emoji:'🪜', unit:'reps / 1 min'},
       {name:'Bike Sprint',    emoji:'🚴', unit:'cal / 30s', higherIsBetter:true},
       null, null
-    ],
-    msgs:{pos:['↑ Better than last time','↑ Improving well','↑ Great progress'],neg:['↓ One to work on','↓ Focus here next session'],nil:['→ Holding steady']}
+    ]
   },
   D: {
     name:'Developmental', programme:'Individual Athlete Development & Intelligence',
@@ -155,8 +154,7 @@ const TIER_DATA = {
       {name:'Pallof Hold',         emoji:'🧘', unit:'seconds'},
       {name:'Reactive Catch',      emoji:'⚡', unit:'score /10'},
       {name:'Drop Jump',           emoji:'🎯', unit:'score /3'}
-    ],
-    msgs:{pos:['↑ Improving','↑ Strong progress','↑ Better than last time'],neg:['↓ Area to focus on','↓ Work in progress'],nil:['→ Holding steady']}
+    ]
   },
   P: {
     name:'Performance', programme:'Individual Athlete Development & Intelligence',
@@ -171,8 +169,7 @@ const TIER_DATA = {
       {name:'Rotational Med Ball', emoji:'🔄', unit:'metres'},
       {name:'Pallof Load',         emoji:'🧘', unit:'kg'},
       {name:'Drop Jump RSI',       emoji:'🎯', unit:'RSI'}
-    ],
-    msgs:{pos:['↑ Improvement recorded','↑ Progressing well'],neg:['↓ Under review','↓ Focus area'],nil:['→ Holding steady']}
+    ]
   }
 };
 
@@ -181,7 +178,6 @@ function getAthleteId(){return new URLSearchParams(window.location.search).get('
 function fmt(v){if(v===null||isNaN(v))return'—';return(v>=0?'+':'')+v.toFixed(1)+'%';}
 function parseVal(c){if(!c||c.v===null||c.v===undefined)return null;const s=String(c.v);if(s==='—'||s==='')return null;const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?null:n;}
 function parsePct(c){if(!c)return null;const r=c.f||(c.v!==null?String(c.v):'');const cl=r.replace(/[%+\s—]/g,'');if(!cl)return null;const n=parseFloat(cl);return isNaN(n)?null:n;}
-function rnd(a){return a[Math.floor(Math.random()*a.length)];}
 
 function checkCode(){
   const id=getAthleteId();
@@ -211,9 +207,9 @@ function checkCode(){
   }
 })();
 
-function sparkSVG(vals,higherBetter){
+function sparkSVG(vals, higherBetter){
   const W=180,H=28,P=4;
-  const clean=vals.filter(v=>v!==null);
+  const clean=vals.filter(v=>v!==null&&v!==undefined);
   if(clean.length<2)return`<svg class="sparkline" viewBox="0 0 ${W} ${H}"><line x1="${P}" y1="${H/2}" x2="${W-P}" y2="${H/2}" stroke="#f0f0f0" stroke-width="1.5" stroke-dasharray="4 3"/></svg>`;
   const mn=Math.min(...clean),mx=Math.max(...clean),rng=mx-mn||1;
   const pts=clean.map((v,i)=>{const x=P+(i/(clean.length-1))*(W-P*2);const y=P+(1-(v-mn)/rng)*(H-P*2);return[x.toFixed(1),y.toFixed(1)];});
@@ -229,45 +225,90 @@ function sparkSVG(vals,higherBetter){
   </svg>`;
 }
 
-function render(athleteId,wk1,wk2,deltas,overall){
-  const tier=getTier(athleteId),td=TIER_DATA[tier];
+// Fetch sparkline history from Form Responses sheet (all sessions per athlete)
+async function loadSparklines(athleteId) {
+  const tier = getTier(athleteId);
+  const td = TIER_DATA[tier];
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Form%20Responses&headers=1`;
+    const text = await (await fetch(url)).text();
+    const json = JSON.parse(text.substring(text.indexOf('(')+1, text.lastIndexOf(')')));
+    const allRows = json.table.rows || [];
+
+    // Filter rows where last column = this athlete's ID
+    const athleteRows = allRows.filter(r => {
+      const cells = r.c || [];
+      const keyCell = cells[cells.length - 1];
+      return keyCell && String(keyCell.v).replace('.0','').trim() === String(athleteId);
+    });
+
+    // Sort by timestamp (col 0 = Google Forms timestamp)
+    athleteRows.sort((a, b) => {
+      const ta = a.c[0]?.v || '';
+      const tb = b.c[0]?.v || '';
+      return ta < tb ? -1 : ta > tb ? 1 : 0;
+    });
+
+    // Build history array per station
+    // Col 0 = timestamp, cols 1..n-1 = station values (last col = key, skip it)
+    const stationHistory = td.stations.map((s, i) => {
+      if (!s) return null;
+      return athleteRows.map(r => parseVal(r.c[i + 1])).filter(v => v !== null);
+    });
+
+    return { stationHistory, sessionCount: athleteRows.length };
+  } catch(e) {
+    console.error('Form Responses fetch failed:', e);
+    return { stationHistory: td.stations.map(() => null), sessionCount: 0 };
+  }
+}
+
+function render(athleteId, wk1, wk2, deltas, overall, stationHistory, sessionCount){
+  const tier=getTier(athleteId), td=TIER_DATA[tier];
   const hasComparison=overall!==null&&wk2.some(v=>v!==null);
   const hasBaseline=wk1.some(v=>v!==null);
   let bestIdx=-1,bestVal=-Infinity;
   deltas.forEach((d,i)=>{if(d!==null&&d>bestVal){bestVal=d;bestIdx=i;}});
   const maxAbs=Math.max(...deltas.filter(d=>d!==null).map(d=>Math.abs(d)),1);
+  const sessLabel = sessionCount > 0 ? `${sessionCount} session${sessionCount>1?'s':''} logged` : 'Baseline → Latest';
 
   let html=`<div class="hero"><div class="hero-top"><div><div class="hero-label">Athlete</div><div class="hero-id ${tier}">${athleteId}</div><div class="hero-programme">${td.programme}</div></div><div class="tier-pill ${tier}">${td.name}</div></div></div>`;
 
   if(hasComparison){
     const oc=overall>0?'pos':overall<0?'neg':'nil';
-    html+=`<div class="overall-card"><div class="ov-label">Overall — vs last time</div><div class="ov-row"><div><div class="ov-pct ${oc}">${fmt(overall)}</div><div class="ov-sub">across all stations</div></div>${bestIdx>=0?`<div class="best-block"><div class="best-label">Best station</div><div class="best-badge"><div class="best-name">${td.stations[bestIdx]?.name||''}</div><div class="best-pct">${fmt(bestVal)}</div></div></div>`:''}</div></div>`;
-    html+=`<div class="chart-card"><div class="chart-title">Improvement % — vs last time</div><div class="chart-wrap">`;
+    html+=`<div class="overall-card"><div class="ov-label">Overall — vs last session</div><div class="ov-row"><div><div class="ov-pct ${oc}">${fmt(overall)}</div><div class="ov-sub">across all stations</div></div>${bestIdx>=0?`<div class="best-block"><div class="best-label">Best station</div><div class="best-badge"><div class="best-name">${td.stations[bestIdx]?.name||''}</div><div class="best-pct">${fmt(bestVal)}</div></div></div>`:''}</div></div>`;
+    html+=`<div class="chart-card"><div class="chart-title">Improvement % — vs last session</div><div class="chart-wrap">`;
     td.stations.filter(s=>s!==null).forEach((s,i)=>{const d=deltas[i];const c=d===null?'nil':d>0?'pos':'neg';html+=`<div class="chart-row"><div class="chart-label">${s.emoji} ${s.name}</div><div class="chart-bar-wrap"><div class="chart-bar-track"><div class="chart-bar-fill ${c}" style="width:${d!==null?Math.abs(d)/maxAbs*100:0}%"></div></div></div><div class="chart-val ${c}">${fmt(d)}</div></div>`;});
     html+=`</div></div>`;
-    const active=td.stations.filter(s=>s!==null);
-    html+=`<div class="journey-section"><div class="journey-header"><div class="journey-title">The Journey So Far</div><div class="journey-weeks">2 weeks logged</div></div><div class="spark-grid">`;
-    active.forEach((s,i)=>{
-      const cur=wk2[i]!==null?wk2[i]:wk1[i];
-      const diff=wk1[i]!==null&&wk2[i]!==null?parseFloat((wk2[i]-wk1[i]).toFixed(2)):null;
-      const imp=diff!==null?(s.higherIsBetter!==false?diff>0:diff<0):null;
-      const tc=imp===null?'flat':imp?'pos':'neg';
-      const tt=diff!==null?(diff>0?`+${diff}`:diff===0?'No change':diff)+' vs W1':'Week 1 baseline';
-      const all=[wk1[i],wk2[i]].filter(v=>v!==null);
-      const pb=all.length?(s.higherIsBetter!==false?Math.max(...all):Math.min(...all)):null;
-      const isPB=cur!==null&&cur===pb&&all.length>1;
-      html+=`<div class="spark-card"><div class="spark-top"><span class="spark-emoji">${s.emoji}</span>${isPB?'<div class="spark-pb">● PB</div>':''}</div><div class="spark-name">${s.name}</div><div class="spark-val-row"><div class="spark-val">${cur!==null?cur:'—'}</div><div class="spark-unit">${cur!==null?s.unit:''}</div></div>${sparkSVG([wk1[i],wk2[i]],s.higherIsBetter!==false)}<div class="spark-trend ${tc}">${tt}</div></div>`;
+  } else if(hasBaseline){
+    html+=`<div class="baseline-card"><div class="baseline-emoji">✅</div><div class="baseline-title">Baseline Recorded</div><div class="baseline-sub">First session scores are in. Check back after the next session to track improvements.</div></div>`;
+  } else {
+    html+=`<div class="baseline-card"><div class="baseline-emoji">🏃</div><div class="baseline-title">Session Incoming</div><div class="baseline-sub">Scores will appear here after the first session.</div></div>`;
+  }
+
+  // Journey So Far — always from Form Responses history
+  const active = td.stations.map((s, i) => ({s, i})).filter(({s}) => s !== null);
+  const hasHistory = stationHistory && active.some(({i}) => stationHistory[i] && stationHistory[i].length > 0);
+
+  if(hasHistory){
+    html+=`<div class="journey-section"><div class="journey-header"><div class="journey-title">The Journey So Far</div><div class="journey-weeks">${sessLabel}</div></div><div class="spark-grid">`;
+    active.forEach(({s, i}) => {
+      const hist = (stationHistory[i] || []);
+      const cur = hist.length > 0 ? hist[hist.length - 1] : null;
+      const first = hist.length > 0 ? hist[0] : null;
+      const diff = hist.length > 1 && cur !== null && first !== null ? parseFloat((cur - first).toFixed(2)) : null;
+      const imp = diff !== null ? (s.higherIsBetter !== false ? diff > 0 : diff < 0) : null;
+      const tc = imp === null ? 'flat' : imp ? 'pos' : 'neg';
+      const pb = hist.length > 0 ? (s.higherIsBetter !== false ? Math.max(...hist) : Math.min(...hist)) : null;
+      const isPB = cur !== null && cur === pb && hist.length > 1;
+      const trendLabel = diff !== null
+        ? (diff > 0 ? `↑ +${Math.abs(diff)} from start` : diff < 0 ? `↓ ${diff} from start` : '→ No change')
+        : hist.length === 1 ? 'Session 1 baseline' : '—';
+      html+=`<div class="spark-card"><div class="spark-top"><span class="spark-emoji">${s.emoji}</span>${isPB?'<div class="spark-pb">● PB</div>':''}</div><div class="spark-name">${s.name}</div><div class="spark-val-row"><div class="spark-val">${cur !== null ? cur : '—'}</div><div class="spark-unit">${cur !== null ? s.unit : ''}</div></div>${sparkSVG(hist, s.higherIsBetter !== false)}<div class="spark-trend ${tc}">${trendLabel}</div></div>`;
     });
     html+=`</div></div>`;
-  } else if(hasBaseline){
-    html+=`<div class="baseline-card"><div class="baseline-emoji">✅</div><div class="baseline-title">Week 1 Complete</div><div class="baseline-sub">Baseline scores are recorded. Check back after the next session to see improvements across every station.</div></div>`;
-    const active=td.stations.filter(s=>s!==null);
-    html+=`<div class="journey-section"><div class="journey-header"><div class="journey-title">The Journey So Far</div><div class="journey-weeks">1 week logged</div></div><div class="spark-grid">`;
-    active.forEach((s,i)=>{html+=`<div class="spark-card"><div class="spark-top"><span class="spark-emoji">${s.emoji}</span></div><div class="spark-name">${s.name}</div><div class="spark-val-row"><div class="spark-val">${wk1[i]!==null?wk1[i]:'—'}</div><div class="spark-unit">${wk1[i]!==null?s.unit:''}</div></div>${sparkSVG([wk1[i],null],s.higherIsBetter!==false)}<div class="spark-trend flat">Week 1 baseline</div></div>`;});
-    html+=`</div></div>`;
-  } else {
-    html+=`<div class="baseline-card"><div class="baseline-emoji">🏃</div><div class="baseline-title">Session incoming</div><div class="baseline-sub">Scores will appear here after the first session.</div></div>`;
   }
+
   document.getElementById('content').innerHTML=html;
 }
 
@@ -275,15 +316,25 @@ async function load(){
   const athleteId=getAthleteId();
   if(!athleteId){document.getElementById('content').innerHTML='<div style="padding:60px 20px;text-align:center;color:#aaa;font-size:13px;">No athlete ID in link.</div>';return;}
   try{
-    const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Board&headers=1`;
-    const text=await(await fetch(url)).text();
-    const json=JSON.parse(text.substring(text.indexOf('(')+1,text.lastIndexOf(')')));
+    // Board sheet → bar chart + overall %
+    const boardUrl=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Board&headers=1`;
+    const boardText=await(await fetch(boardUrl)).text();
+    const boardJson=JSON.parse(boardText.substring(boardText.indexOf('(')+1,boardText.lastIndexOf(')')));
     let row=null;
-    for(const r of json.table.rows){const c=r.c||[];if(!c[1]||c[1].v===null)continue;if(String(c[1].v).replace('.0','').trim()===String(athleteId)){row=c;break;}}
-    if(!row){document.getElementById('content').innerHTML='<div style="padding:60px 20px;text-align:center;color:#aaa;">Athlete not found.</div>';return;}
+    for(const r of boardJson.table.rows){const c=r.c||[];if(!c[1]||c[1].v===null)continue;if(String(c[1].v).replace('.0','').trim()===String(athleteId)){row=c;break;}}
+
     const wk1=[],wk2=[],deltas=[];
-    for(let i=0;i<10;i++){wk1.push(parseVal(row[2+i*3]));wk2.push(parseVal(row[3+i*3]));deltas.push(parsePct(row[4+i*3]));}
-    render(athleteId,wk1,wk2,deltas,parsePct(row[32]));
+    if(row){
+      for(let i=0;i<10;i++){wk1.push(parseVal(row[2+i*3]));wk2.push(parseVal(row[3+i*3]));deltas.push(parsePct(row[4+i*3]));}
+    } else {
+      for(let i=0;i<10;i++){wk1.push(null);wk2.push(null);deltas.push(null);}
+    }
+    const overall = row ? parsePct(row[32]) : null;
+
+    // Form Responses sheet → sparkline history
+    const { stationHistory, sessionCount } = await loadSparklines(athleteId);
+
+    render(athleteId, wk1, wk2, deltas, overall, stationHistory, sessionCount);
   }catch(e){
     console.error(e);
     document.getElementById('content').innerHTML='<div style="padding:60px 20px;text-align:center;color:#aaa;">Connection error — retrying in 30 seconds</div>';
@@ -291,7 +342,7 @@ async function load(){
 }
 
 load();
-setInterval(load,30000);
+setInterval(load, 30000);
 </script>
 </body>
 </html>
