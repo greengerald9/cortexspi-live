@@ -210,6 +210,7 @@ function sparkSVG(vals,higherIsBetter){
   </svg>`;
 }
 
+// Form Responses 1: Timestamp(0), Station(1), Athlete I.D(2), Week(3), Score(4), COACH(5), Column1-key(6)
 async function loadSparklines(athleteId){
   const tier=getTier(athleteId),td=TIER_DATA[tier];
   try{
@@ -217,22 +218,34 @@ async function loadSparklines(athleteId){
     const text=await(await fetch(url)).text();
     const json=JSON.parse(text.substring(text.indexOf('(')+1,text.lastIndexOf(')')));
     const allRows=(json.table.rows||[]).filter(r=>r.c&&r.c[2]&&r.c[2].v!==null);
+
+    // Filter by Athlete I.D (col 2)
     const athleteRows=allRows.filter(r=>{
       return String(r.c[2].v).replace('.0','').trim()===String(athleteId);
     });
+
+    // Sort by Week (col 3) asc, then timestamp (col 0)
     athleteRows.sort((a,b)=>{
       const wa=parseFloat(String(a.c[3]?.v||'0'))||0;
       const wb=parseFloat(String(b.c[3]?.v||'0'))||0;
       return wa!==wb?wa-wb:String(a.c[0]?.v||'').localeCompare(String(b.c[0]?.v||''));
     });
+
     const weeks=[...new Set(athleteRows.map(r=>String(r.c[3]?.v||'').trim()).filter(w=>w))];
-    const stationHistory=td.stations.map(s=>{
+
+    // Per station: match by station number (col 1) OR name, extract score (col 4)
+    const stationHistory=td.stations.map((s,idx)=>{
       if(!s)return null;
+      const stNum=String(idx+1);
       return athleteRows
-        .filter(r=>String(r.c[1]?.v||'').trim().toLowerCase()===s.name.toLowerCase())
+        .filter(r=>{
+          const sv=String(r.c[1]?.v||'').trim();
+          return sv===stNum||sv.toLowerCase()===s.name.toLowerCase();
+        })
         .map(r=>parseVal(r.c[4]))
         .filter(v=>v!==null);
     });
+
     return{stationHistory,weekCount:weeks.length};
   }catch(e){
     console.error('Form Responses 1 fetch error:',e);
@@ -263,6 +276,7 @@ function render(athleteId,wk1,wk2,deltas,overall,stationHistory,weekCount){
     html+=`<div class="baseline-card"><div class="baseline-emoji">🏃</div><div class="baseline-title">Session Incoming</div><div class="baseline-sub">Scores will appear here after the first session.</div></div>`;
   }
 
+  // Journey So Far — from Form Responses 1
   const active=td.stations.map((s,i)=>({s,i})).filter(({s})=>s!==null);
   const hasHistory=(stationHistory&&active.some(({i})=>stationHistory[i]&&stationHistory[i].length>0))||active.some(({i})=>wk1[i]!==null||wk2[i]!==null);
 
@@ -270,6 +284,7 @@ function render(athleteId,wk1,wk2,deltas,overall,stationHistory,weekCount){
     html+=`<div class="journey-section"><div class="journey-header"><div class="journey-title">The Journey So Far</div><div class="journey-weeks">${weekLabel}</div></div><div class="spark-grid">`;
     active.forEach(({s,i})=>{
       const hist=(stationHistory&&stationHistory[i])||[];
+      // Fallback to Board wk1/wk2 if no form data for this station
       const sparkData=hist.length>0?hist:[wk1[i],wk2[i]].filter(v=>v!==null);
       const cur=sparkData.length>0?sparkData[sparkData.length-1]:null;
       const first=sparkData.length>0?sparkData[0]:null;
